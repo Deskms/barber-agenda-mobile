@@ -23,6 +23,15 @@ class SesionStore(context: Context) {
     var telefono: String? by mutableStateOf(prefs.getString(LLAVE_TELEFONO, null))
         private set
 
+    /** La clienta pidió que la app se abra con huella o rostro. */
+    var pedirHuella: Boolean by mutableStateOf(prefs.getBoolean(LLAVE_HUELLA, false))
+        private set
+
+    fun cambiarHuella(activa: Boolean) {
+        prefs.edit().putBoolean(LLAVE_HUELLA, activa).apply()
+        pedirHuella = activa
+    }
+
     fun guardar(sesion: SesionIniciada) {
         prefs.edit()
             .putString(LLAVE_TOKEN, sesion.token)
@@ -34,12 +43,14 @@ class SesionStore(context: Context) {
 
     fun limpiar() {
         prefs.edit().clear().apply()
+        pedirHuella = false
         token = null
     }
 
     private companion object {
         const val LLAVE_TOKEN = "token"
         const val LLAVE_TELEFONO = "telefono"
+        const val LLAVE_HUELLA = "pedir_huella"
 
         fun abrir(context: Context): SharedPreferences = try {
             val llave = MasterKey.Builder(context)

@@ -13,6 +13,8 @@ private val FORMATO_DIA = DateTimeFormatter.ofPattern("EEE d MMM", ES_MX)
 fun fechaLarga(f: OffsetDateTime): String =
     f.format(FORMATO_LARGO).replaceFirstChar { it.titlecase(ES_MX) }
 
+fun horaCorta(f: OffsetDateTime): String = f.format(DateTimeFormatter.ofPattern("HH:mm"))
+
 fun diaCorto(d: LocalDate): String =
     if (d == LocalDate.now(ZONA_NEGOCIO)) "Hoy" else d.format(FORMATO_DIA)
 

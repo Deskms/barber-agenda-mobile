@@ -63,9 +63,11 @@ class ApiClient(
     suspend fun catalogo(): List<Seccion> =
         llamar("GET", "catalogo").optJSONArray("data").lista(::seccionDe)
 
-    suspend fun disponibilidad(servicioId: Int, fecha: LocalDate): List<Horario> {
+    /** citaId: al reprogramar, para que la cita propia no tape su horario. */
+    suspend fun disponibilidad(servicioId: Int, fecha: LocalDate, citaId: Int? = null): List<Horario> {
         val dia = fecha.format(DateTimeFormatter.ISO_LOCAL_DATE)
-        return llamar("GET", "disponibilidad?servicio_id=$servicioId&fecha=$dia")
+        val extra = citaId?.let { "&cita_id=$it" }.orEmpty()
+        return llamar("GET", "disponibilidad?servicio_id=$servicioId&fecha=$dia$extra")
             .optJSONArray("data").lista(::horarioDe)
     }
 
@@ -82,8 +84,30 @@ class ApiClient(
         return citaDe(llamar("POST", "citas", cuerpo).getJSONObject("data"))
     }
 
+    suspend fun reprogramar(citaId: Int, horario: Horario): Cita {
+        val inicio = horario.inicio.toLocalDateTime()
+            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"))
+        return citaDe(llamar("POST", "citas/$citaId/reprogramar", JSONObject().put("inicio", inicio)).getJSONObject("data"))
+    }
+
+    // --- Ofertas de huecos -------------------------------------------------
+
+    suspend fun ofertas(): List<Oferta> =
+        llamar("GET", "ofertas").optJSONArray("data").lista(::ofertaDe)
+
+    suspend fun aceptarOferta(id: Int): Cita =
+        citaDe(llamar("POST", "ofertas/$id/aceptar").getJSONObject("data"))
+
     suspend fun cancelar(citaId: Int): Cita =
         citaDe(llamar("POST", "citas/$citaId/cancelar").getJSONObject("data"))
+
+    /** Manda lo que leyó la cámara; el servidor decide si es el QR del mostrador. */
+    suspend fun registrarLlegada(codigo: String): String =
+        llamar("POST", "llegada", JSONObject().put("codigo", codigo))
+            .texto("mensaje") ?: "Llegada registrada."
+
+    suspend fun negocio(): Negocio =
+        negocioDe(llamar("GET", "negocio").getJSONObject("data"))
 
     // --- Tarjeta de sellos ------------------------------------------------
 

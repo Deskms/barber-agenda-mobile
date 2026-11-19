@@ -13,6 +13,8 @@ import mx.tunegocio.barberagenda.data.ApiClient
 import mx.tunegocio.barberagenda.data.ApiException
 import mx.tunegocio.barberagenda.data.Cita
 import mx.tunegocio.barberagenda.data.Horario
+import mx.tunegocio.barberagenda.data.Negocio
+import mx.tunegocio.barberagenda.data.Oferta
 import mx.tunegocio.barberagenda.data.Seccion
 import mx.tunegocio.barberagenda.data.Sellos
 import mx.tunegocio.barberagenda.data.Servicio
@@ -123,6 +125,8 @@ class AgendarViewModel(private val api: ApiClient) : BaseViewModel() {
         private set
     var cargandoHorarios by mutableStateOf(false)
         private set
+    var ofertas by mutableStateOf<List<Oferta>>(emptyList())
+        private set
 
     /** Los próximos 14 días; el servidor dice cuáles están cerrados. */
     val dias: List<LocalDate>
@@ -132,6 +136,29 @@ class AgendarViewModel(private val api: ApiClient) : BaseViewModel() {
 
     fun alEntrar() {
         if (secciones.isEmpty()) cargarCatalogo() else cargarHorarios()
+        cargarOfertas()
+    }
+
+    /** Huecos avisados por WhatsApp que esta clienta todavía puede tomar. */
+    fun cargarOfertas() {
+        viewModelScope.launch {
+            ofertas = try {
+                api.ofertas()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                emptyList() // las ofertas son un extra: si fallan no se bloquea Agendar
+            }
+        }
+    }
+
+    fun aceptarOferta(id: Int, alTerminar: (Cita) -> Unit) {
+        if (cargando) return
+        lanzar(alFallar = { cargarOfertas() }) {
+            val cita = api.aceptarOferta(id)
+            ofertas = ofertas.filterNot { it.id == id }
+            alTerminar(cita)
+        }
     }
 
     fun cargarCatalogo() {
@@ -193,6 +220,48 @@ class AgendarViewModel(private val api: ApiClient) : BaseViewModel() {
     }
 }
 
+// --- Reprogramar -----------------------------------------------------------
+
+class ReprogramarViewModel(private val api: ApiClient, val cita: Cita) : BaseViewModel() {
+
+    var fecha by mutableStateOf(cita.inicio.toLocalDate())
+        private set
+    var horarios by mutableStateOf<List<Horario>>(emptyList())
+        private set
+    var horario by mutableStateOf<Horario?>(null)
+        private set
+
+    val dias: List<LocalDate>
+        get() = (0L until 14L).map { LocalDate.now(ZONA_NEGOCIO).plusDays(it) }
+
+    fun elegirFecha(d: LocalDate) {
+        fecha = d
+        cargarHorarios()
+    }
+
+    fun elegirHorario(h: Horario) {
+        horario = h
+    }
+
+    fun cargarHorarios() {
+        val servicio = cita.servicio ?: return
+        horario = null
+        lanzar {
+            // La hora actual de la cita no cuenta como cambio.
+            horarios = api.disponibilidad(servicio.id, fecha, cita.id)
+                .filterNot { it.inicio.isEqual(cita.inicio) }
+        }
+    }
+
+    fun confirmar(alTerminar: (Cita) -> Unit) {
+        val h = horario ?: return
+        if (cargando) return
+        lanzar(alFallar = { e -> if (e.codigo == 409) cargarHorarios() }) {
+            alTerminar(api.reprogramar(cita.id, h))
+        }
+    }
+}
+
 // --- Mis citas -----------------------------------------------------------------
 
 class CitasViewModel(private val api: ApiClient) : BaseViewModel() {
@@ -217,6 +286,36 @@ class CitasViewModel(private val api: ApiClient) : BaseViewModel() {
                 cancelando = null
             }
         }
+    }
+}
+
+// --- Llegada con el QR del mostrador ------------------------------------------
+
+class LlegadaViewModel(private val api: ApiClient) : BaseViewModel() {
+
+    var resultado by mutableStateOf<String?>(null)
+        private set
+
+    fun registrar(codigo: String) {
+        resultado = null
+        lanzar { resultado = api.registrarLlegada(codigo) }
+    }
+
+    fun reiniciar() {
+        resultado = null
+        error = null
+    }
+}
+
+// --- Brújula -------------------------------------------------------------------
+
+class BrujulaViewModel(private val api: ApiClient) : BaseViewModel() {
+
+    var negocio by mutableStateOf<Negocio?>(null)
+        private set
+
+    fun cargar() {
+        if (negocio == null) lanzar { negocio = api.negocio() }
     }
 }
 

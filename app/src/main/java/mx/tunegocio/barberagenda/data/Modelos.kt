@@ -41,8 +41,25 @@ data class Cita(
     val inicio: OffsetDateTime,
     val fin: OffsetDateTime,
     val puedeCancelarse: Boolean,
+    /** Hora en que escaneó el QR del mostrador; null si no lo ha hecho. */
+    val llegadaEn: OffsetDateTime?,
     val servicio: Servicio?,
     val seccion: Seccion?,
+)
+
+/** Hueco que se le avisó a la clienta y todavía puede tomar. */
+data class Oferta(
+    val id: Int,
+    val inicio: OffsetDateTime,
+    val servicio: Servicio,
+)
+
+/** Datos del local para la brújula. lat/lng pueden faltar si no se configuraron. */
+data class Negocio(
+    val nombre: String?,
+    val direccion: String?,
+    val lat: Double?,
+    val lng: Double?,
 )
 
 /** Tarjeta de sellos: un sello por cada cita completada. */
@@ -112,6 +129,19 @@ internal fun horarioDe(j: JSONObject) = Horario(
     hora = j.texto("hora").orEmpty(),
 )
 
+internal fun ofertaDe(j: JSONObject) = Oferta(
+    id = j.getInt("id"),
+    inicio = OffsetDateTime.parse(j.getString("inicio")),
+    servicio = servicioDe(j.getJSONObject("servicio")),
+)
+
+internal fun negocioDe(j: JSONObject) = Negocio(
+    nombre = j.texto("nombre"),
+    direccion = j.texto("direccion"),
+    lat = j.decimal("lat"),
+    lng = j.decimal("lng"),
+)
+
 internal fun sellosDe(j: JSONObject) = Sellos(
     meta = j.optInt("meta", 10),
     premio = j.texto("premio").orEmpty(),
@@ -129,6 +159,7 @@ internal fun citaDe(j: JSONObject) = Cita(
     inicio = OffsetDateTime.parse(j.getString("inicio")),
     fin = OffsetDateTime.parse(j.getString("fin")),
     puedeCancelarse = j.optBoolean("puede_cancelarse", false),
+    llegadaEn = j.texto("llegada_en")?.let(OffsetDateTime::parse),
     servicio = j.optJSONObject("servicio")?.let(::servicioDe),
     seccion = j.optJSONObject("seccion")?.let(::seccionDe),
 )

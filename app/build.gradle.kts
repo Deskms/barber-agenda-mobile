@@ -55,5 +55,16 @@ dependencies {
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.security.crypto)
     implementation(libs.okhttp)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+
+    // Sensor 1: cámara para leer el QR de llegada.
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.mlkit.barcode.scanning)
+
+    // Sensor 2: huella o rostro para abrir la app.
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.fragment.ktx)
     debugImplementation(libs.androidx.ui.tooling)
 }

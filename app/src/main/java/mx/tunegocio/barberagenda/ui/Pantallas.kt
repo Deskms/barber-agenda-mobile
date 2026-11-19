@@ -3,10 +3,12 @@
 package mx.tunegocio.barberagenda.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.aspectRatio
@@ -30,6 +33,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
@@ -45,14 +49,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +70,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -70,12 +79,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.fragment.app.FragmentActivity
 import mx.tunegocio.barberagenda.BarberApp
 import mx.tunegocio.barberagenda.BuildConfig
 import mx.tunegocio.barberagenda.data.Cita
 import mx.tunegocio.barberagenda.data.Servicio
 
-// Diseño mínimo a propósito: aquí solo se resuelve que funcione.
+// Estilo minimalista tipo iOS (ver Tema.kt): fondo gris, grupos blancos,
+// títulos grandes y un solo color de acción (azul ballena).
 
 // --- Acceso ------------------------------------------------------------------
 
@@ -83,32 +94,39 @@ import mx.tunegocio.barberagenda.data.Servicio
 fun PantallaAcceso(app: BarberApp) {
     val vm: AccesoViewModel = viewModel { AccesoViewModel(app.api, app.sesion) }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Barber Agenda") }) }) { relleno ->
+    Scaffold(containerColor = MaterialTheme.colorScheme.background) { relleno ->
         Column(
             modifier = Modifier
                 .padding(relleno)
                 .imePadding()
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Entra con tu WhatsApp", style = MaterialTheme.typography.headlineSmall)
+            Logo()
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Barber Agenda", style = MaterialTheme.typography.headlineMedium)
+                Text("Entra con tu WhatsApp", style = MaterialTheme.typography.bodyLarge, color = Paleta.Gris2)
+            }
 
             if (!vm.esperandoCodigo) {
-                Text("Te mandamos un código de 6 dígitos. No necesitas contraseña.")
+                Text("Te mandamos un código de 6 dígitos. No necesitas contraseña.", style = MaterialTheme.typography.bodyMedium, color = Paleta.Gris2)
                 OutlinedTextField(
                     value = vm.telefono,
                     onValueChange = { vm.telefono = it },
                     label = { Text("Número a 10 dígitos") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = coloresCampo(),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Button(
                     onClick = vm::pedirCodigo,
                     enabled = !vm.cargando,
-                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
                 ) { Text(if (vm.cargando) "Enviando…" else "Enviarme el código") }
             } else {
                 vm.aviso?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
@@ -118,12 +136,15 @@ fun PantallaAcceso(app: BarberApp) {
                     label = { Text("Código de 6 dígitos") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = coloresCampo(),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Button(
                     onClick = vm::entrar,
                     enabled = !vm.cargando,
-                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
                 ) { Text(if (vm.cargando) "Entrando…" else "Entrar") }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = vm::cambiarNumero) { Text("Cambiar número") }
@@ -138,6 +159,7 @@ fun PantallaAcceso(app: BarberApp) {
                 Text(
                     "Pruebas: usa 5550000001, 5550000002 o 5550000003.\nServidor: ${BuildConfig.API_BASE}",
                     style = MaterialTheme.typography.bodySmall,
+                    color = Paleta.Gris,
                 )
             }
         }
@@ -161,23 +183,87 @@ fun PantallaPrincipal(app: BarberApp) {
     val contexto = LocalContext.current
     // Una sesión nueva arranca con ViewModels nuevos: no se mezclan datos de otra clienta.
     val clave = app.sesion.token.hashCode().toString()
+    var escaneando by rememberSaveable { mutableStateOf(false) }
+    var brujula by rememberSaveable { mutableStateOf(false) }
+    var sensores by rememberSaveable { mutableStateOf(false) }
+    var citaAMover by remember { mutableStateOf<Cita?>(null) }
+
+    // Acelerómetro: agitar el teléfono abre la tarjeta de sellos desde cualquier pestaña.
+    DetectorDeAgitar {
+        escaneando = false
+        brujula = false
+        sensores = false
+        citaAMover = null
+        pestana = 2
+    }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(PESTANAS[pestana].titulo) }) },
+        containerColor = MaterialTheme.colorScheme.background,
+        // Título grande a la izquierda, como en las apps de iOS.
+        topBar = {
+            TopAppBar(
+                title = { Text(PESTANAS[pestana].titulo, style = MaterialTheme.typography.headlineMedium) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+        // Barra de pestañas blanca con línea fina arriba y sin "pastilla".
         bottomBar = {
-            NavigationBar {
-                PESTANAS.forEachIndexed { i, p ->
-                    NavigationBarItem(
-                        selected = pestana == i,
-                        onClick = { pestana = i },
-                        icon = { Icon(p.icono, contentDescription = p.titulo) },
-                        label = { Text(p.titulo) },
-                    )
+            Column {
+                HorizontalDivider(thickness = 0.5.dp, color = Paleta.LineaFuerte)
+                NavigationBar(containerColor = Paleta.Superficie, tonalElevation = 0.dp) {
+                    PESTANAS.forEachIndexed { i, p ->
+                        NavigationBarItem(
+                            selected = pestana == i,
+                            onClick = { pestana = i },
+                            icon = { Icon(p.icono, contentDescription = p.titulo) },
+                            label = { Text(p.titulo, style = MaterialTheme.typography.labelSmall) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Paleta.Ballena,
+                                selectedTextColor = Paleta.Ballena,
+                                indicatorColor = Color.Transparent,
+                                unselectedIconColor = Paleta.Gris,
+                                unselectedTextColor = Paleta.Gris,
+                            ),
+                        )
+                    }
                 }
             }
         },
     ) { relleno ->
         Box(Modifier.padding(relleno).fillMaxSize()) {
+            if (escaneando) {
+                PantallaLlegada(
+                    vm = viewModel(key = "llegada-$clave") { LlegadaViewModel(app.api) },
+                    alCerrar = {
+                        escaneando = false
+                        pestana = 1
+                    },
+                )
+                return@Box
+            }
+            if (sensores) {
+                PantallaDiagnosticoSensores(alCerrar = { sensores = false })
+                return@Box
+            }
+            citaAMover?.let { cita ->
+                PantallaReprogramar(
+                    vm = viewModel(key = "mover-${cita.id}-$clave") { ReprogramarViewModel(app.api, cita) },
+                    alTerminar = { movida ->
+                        Toast.makeText(contexto, "Nuevo horario: ${fechaLarga(movida.inicio)}", Toast.LENGTH_LONG).show()
+                        citaAMover = null
+                        pestana = 1
+                    },
+                    alCerrar = { citaAMover = null },
+                )
+                return@Box
+            }
+            if (brujula) {
+                PantallaBrujula(
+                    vm = viewModel(key = "brujula-$clave") { BrujulaViewModel(app.api) },
+                    alCerrar = { brujula = false },
+                )
+                return@Box
+            }
             when (pestana) {
                 0 -> PantallaAgendar(
                     vm = viewModel(key = "agendar-$clave") { AgendarViewModel(app.api) },
@@ -190,9 +276,18 @@ fun PantallaPrincipal(app: BarberApp) {
                         pestana = 1
                     },
                 )
-                1 -> PantallaCitas(viewModel(key = "citas-$clave") { CitasViewModel(app.api) })
+                1 -> PantallaCitas(
+                    vm = viewModel(key = "citas-$clave") { CitasViewModel(app.api) },
+                    alLlegar = { escaneando = true },
+                    alComoLlegar = { brujula = true },
+                    alMover = { citaAMover = it },
+                )
                 2 -> PantallaSellos(viewModel(key = "sellos-$clave") { SellosViewModel(app.api) })
-                else -> PantallaPerfil(viewModel(key = "perfil-$clave") { PerfilViewModel(app.api, app.sesion) })
+                else -> PantallaPerfil(
+                    vm = viewModel(key = "perfil-$clave") { PerfilViewModel(app.api, app.sesion) },
+                    app = app,
+                    alSensores = { sensores = true },
+                )
             }
         }
     }
@@ -213,6 +308,12 @@ fun PantallaAgendar(vm: AgendarViewModel, alAgendar: (Cita) -> Unit) {
     ) {
         vm.error?.let { item { MensajeError(it) } }
 
+        if (vm.ofertas.isNotEmpty()) {
+            items(vm.ofertas, key = { "oferta-${it.id}" }) { o ->
+                TarjetaOferta(o, ocupado = vm.cargando) { vm.aceptarOferta(o.id, alAgendar) }
+            }
+        }
+
         item { Subtitulo("1. Elige el servicio") }
         if (vm.cargando && vm.secciones.isEmpty()) item { Cargando() }
         if (!vm.cargando && vm.secciones.isEmpty()) {
@@ -224,8 +325,8 @@ fun PantallaAgendar(vm: AgendarViewModel, alAgendar: (Cita) -> Unit) {
                 Text(
                     seccion.nombre,
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 8.dp),
+                    color = Paleta.Cafe,
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp),
                 )
             }
             items(seccion.servicios, key = { "servicio-${it.id}" }) { s ->
@@ -269,17 +370,18 @@ fun PantallaAgendar(vm: AgendarViewModel, alAgendar: (Cita) -> Unit) {
 
             if (horario != null) {
                 item {
-                    Text(
-                        "${servicio.nombre} · ${fechaLarga(horario.inicio)} · ${precioTexto(servicio.precio)}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
+                    Grupo(Modifier.padding(top = 8.dp)) {
+                        Text(servicio.nombre, style = MaterialTheme.typography.titleMedium)
+                        Text(fechaLarga(horario.inicio), style = MaterialTheme.typography.bodyMedium)
+                        Text(precioTexto(servicio.precio), style = MaterialTheme.typography.bodySmall)
+                    }
                 }
                 item {
                     Button(
                         onClick = { vm.agendar(alAgendar) },
                         enabled = !vm.cargando,
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(52.dp),
                     ) {
                         Text(
                             if (vm.cargando) "Agendando…"
@@ -296,20 +398,16 @@ fun PantallaAgendar(vm: AgendarViewModel, alAgendar: (Cita) -> Unit) {
 private fun FilaServicio(s: Servicio, elegido: Boolean, alElegir: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = alElegir),
-        colors = if (elegido) {
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-        } else {
-            CardDefaults.cardColors()
-        },
+        colors = CardDefaults.cardColors(containerColor = Paleta.Superficie),
+        border = if (elegido) BorderStroke(1.5.dp, Paleta.Ballena) else null,
     ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            RadioButton(selected = elegido, onClick = alElegir)
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(s.nombre, fontWeight = FontWeight.SemiBold)
-                Text(
-                    "${s.duracionMinutos} min · ${precioTexto(s.precio)}",
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Text(s.nombre, style = MaterialTheme.typography.bodyLarge)
+                Text("${s.duracionMinutos} min · ${precioTexto(s.precio)}", style = MaterialTheme.typography.bodySmall)
+            }
+            if (elegido) {
+                Icon(Icons.Filled.Check, contentDescription = "Elegido", tint = Paleta.Ballena)
             }
         }
     }
@@ -318,7 +416,7 @@ private fun FilaServicio(s: Servicio, elegido: Boolean, alElegir: () -> Unit) {
 // --- Mis citas ---------------------------------------------------------------
 
 @Composable
-fun PantallaCitas(vm: CitasViewModel) {
+fun PantallaCitas(vm: CitasViewModel, alLlegar: () -> Unit, alComoLlegar: () -> Unit, alMover: (Cita) -> Unit) {
     LaunchedEffect(Unit) { vm.cargar() }
     var porCancelar by remember { mutableStateOf<Cita?>(null) }
 
@@ -328,6 +426,26 @@ fun PantallaCitas(vm: CitasViewModel) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
+            Button(
+                onClick = alLlegar,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Text("Ya llegué: escanear QR del mostrador")
+            }
+        }
+        item {
+            OutlinedButton(
+                onClick = alComoLlegar,
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Paleta.Superficie),
+                border = BorderStroke(1.dp, Paleta.Linea),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Text("Cómo llegar (brújula)")
+            }
+        }
+        item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = vm::cargar, enabled = !vm.cargando) { Text("Actualizar") }
@@ -336,7 +454,7 @@ fun PantallaCitas(vm: CitasViewModel) {
         vm.error?.let { item { MensajeError(it) } }
         if (vm.cargando && vm.citas.isEmpty()) item { Cargando() }
         if (!vm.cargando && vm.citas.isEmpty() && vm.error == null) {
-            item { Text("Todavía no tienes citas. Agenda una en la pestaña Agendar.") }
+            item { Text("Todavía no tienes citas. Agenda una en la pestaña Agendar.", color = Paleta.Gris2) }
         }
         val ahora = java.time.OffsetDateTime.now()
         val (proximas, historial) = vm.citas.partition {
@@ -345,13 +463,13 @@ fun PantallaCitas(vm: CitasViewModel) {
         if (proximas.isNotEmpty()) {
             item { Subtitulo("Próximas") }
             items(proximas.sortedBy { it.inicio }, key = { it.id }) { c ->
-                TarjetaCita(c, cancelando = vm.cancelando == c.id) { porCancelar = c }
+                TarjetaCita(c, cancelando = vm.cancelando == c.id, alMover = { alMover(c) }) { porCancelar = c }
             }
         }
         if (historial.isNotEmpty()) {
             item { Subtitulo("Historial") }
             items(historial, key = { it.id }) { c ->
-                TarjetaCita(c, cancelando = vm.cancelando == c.id) { porCancelar = c }
+                TarjetaCita(c, cancelando = vm.cancelando == c.id, alMover = { alMover(c) }) { porCancelar = c }
             }
         }
     }
@@ -377,21 +495,38 @@ fun PantallaCitas(vm: CitasViewModel) {
 }
 
 @Composable
-private fun TarjetaCita(c: Cita, cancelando: Boolean, alCancelar: () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+private fun TarjetaCita(c: Cita, cancelando: Boolean, alMover: () -> Unit, alCancelar: () -> Unit) {
+    val colorEstado = when (c.estado) {
+        "confirmada" -> Paleta.Ballena
+        "completada" -> Paleta.Verde
+        "no_asistio" -> Paleta.Oxido
+        else -> Paleta.Gris
+    }
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Paleta.Superficie)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(c.servicio?.nombre ?: "Servicio", fontWeight = FontWeight.SemiBold)
-            Text(fechaLarga(c.inicio))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(c.servicio?.nombre ?: "Servicio", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Box(Modifier.size(8.dp).background(colorEstado, CircleShape))
+                Spacer(Modifier.width(6.dp))
+                Text(estadoTexto(c.estado), color = colorEstado, style = MaterialTheme.typography.labelLarge)
+            }
+            Text(fechaLarga(c.inicio), style = MaterialTheme.typography.bodyMedium)
             c.seccion?.let { Text(it.nombre, style = MaterialTheme.typography.bodySmall) }
-            Text(
-                estadoTexto(c.estado),
-                color = if (c.estado == "confirmada") MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.outline,
-                style = MaterialTheme.typography.labelLarge,
-            )
+            c.llegadaEn?.let {
+                Text("Llegaste a las ${horaCorta(it)}", color = Paleta.Cafe, style = MaterialTheme.typography.bodyMedium)
+            }
             if (c.puedeCancelarse) {
-                OutlinedButton(onClick = alCancelar, enabled = !cancelando) {
-                    Text(if (cancelando) "Cancelando…" else "Cancelar cita")
+                HorizontalDivider(Modifier.padding(vertical = 8.dp), thickness = 0.5.dp, color = Paleta.Linea)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = alMover, enabled = !cancelando) { Text("Cambiar horario") }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(
+                        onClick = alCancelar,
+                        enabled = !cancelando,
+                        colors = ButtonDefaults.textButtonColors(contentColor = Paleta.Oxido),
+                    ) {
+                        Text(if (cancelando) "Cancelando…" else "Cancelar")
+                    }
                 }
             }
         }
@@ -419,49 +554,55 @@ fun PantallaSellos(vm: SellosViewModel) {
             return@Column
         }
 
-        Text("Un sello por cada cita completada.", style = MaterialTheme.typography.bodyMedium)
-
-        // Cuadrícula de 5 por fila: lleno = sello ganado.
-        val primario = MaterialTheme.colorScheme.primary
-        (1..s.meta).chunked(5).forEach { fila ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                fila.forEach { n ->
-                    val lleno = n <= s.sellos
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f)
-                            .background(if (lleno) primario else MaterialTheme.colorScheme.surface, CircleShape)
-                            .border(2.dp, primario, CircleShape),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            if (lleno) "✓" else n.toString(),
-                            color = if (lleno) MaterialTheme.colorScheme.onPrimary else primario,
-                        )
+        // Tarjeta de cartón café: un sello lleno por cada cita completada.
+        Grupo {
+            Text("${s.sellos} de ${s.meta}", style = MaterialTheme.typography.headlineSmall)
+            Text("Te faltan ${s.faltan} para: ${s.premio}", style = MaterialTheme.typography.bodyMedium, color = Paleta.Gris2)
+            Spacer(Modifier.height(8.dp))
+            (1..s.meta).chunked(5).forEach { fila ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 10.dp)) {
+                    fila.forEach { n ->
+                        val lleno = n <= s.sellos
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .border(1.5.dp, if (lleno) Paleta.Cafe else Paleta.LineaFuerte, CircleShape)
+                                .background(if (lleno) Paleta.Cafe else Paleta.Superficie, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                if (lleno) "✓" else n.toString(),
+                                color = if (lleno) Color.White else Paleta.Gris,
+                                fontWeight = if (lleno) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        }
                     }
+                    // Relleno para que la última fila no se estire.
+                    repeat(5 - fila.size) { Spacer(Modifier.weight(1f)) }
                 }
-                // Relleno para que la última fila no se estire.
-                repeat(5 - fila.size) { Spacer(Modifier.weight(1f)) }
             }
         }
 
         Text(
-            "${s.sellos} de ${s.meta} sellos. Te faltan ${s.faltan} para: ${s.premio}.",
-            fontWeight = FontWeight.SemiBold,
+            "Un sello por cada cita completada. Agita el teléfono para abrir esta tarjeta.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 4.dp),
         )
 
         if (s.premiosDisponibles > 0) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+            Card(colors = CardDefaults.cardColors(containerColor = Paleta.CafeClaro)) {
                 Text(
                     "Tienes ${s.premiosDisponibles} premio(s) listo(s): ${s.premio}. Muéstralo en tu próxima visita.",
+                    color = Paleta.Cafe,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(16.dp),
                 )
             }
         }
 
         s.tarjetaUrl?.let { url ->
-            OutlinedButton(onClick = { abrir.openUri(url) }, modifier = Modifier.fillMaxWidth()) {
+            TextButton(onClick = { abrir.openUri(url) }, modifier = Modifier.fillMaxWidth()) {
                 Text("Abrir mi tarjeta en el navegador")
             }
         }
@@ -473,8 +614,11 @@ fun PantallaSellos(vm: SellosViewModel) {
 // --- Perfil --------------------------------------------------------------------
 
 @Composable
-fun PantallaPerfil(vm: PerfilViewModel) {
+fun PantallaPerfil(vm: PerfilViewModel, app: BarberApp, alSensores: () -> Unit) {
     LaunchedEffect(Unit) { vm.cargar() }
+    val actividad = LocalContext.current as FragmentActivity
+    val hayHuella = remember { huellaDisponible(actividad) }
+    var errorHuella by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -486,41 +630,128 @@ fun PantallaPerfil(vm: PerfilViewModel) {
     ) {
         vm.error?.let { MensajeError(it) }
 
-        Text("WhatsApp: ${vm.telefono}")
+        EncabezadoGrupo("Tus datos")
+        Grupo {
+            Text("WhatsApp", style = MaterialTheme.typography.bodySmall)
+            Text(vm.telefono, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = vm.nombre,
+                onValueChange = { vm.nombre = it },
+                label = { Text("Nombre") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = coloresCampo(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            TextButton(onClick = vm::guardarNombre, enabled = !vm.cargando) { Text("Guardar nombre") }
+        }
 
-        OutlinedTextField(
-            value = vm.nombre,
-            onValueChange = { vm.nombre = it },
-            label = { Text("Nombre") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Button(onClick = vm::guardarNombre, enabled = !vm.cargando) { Text("Guardar nombre") }
-
-        HorizontalDivider()
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Avisos de espacios libres", fontWeight = FontWeight.SemiBold)
-                Text(
-                    "Te escribimos por WhatsApp cuando se libera un horario. Puedes apagarlo cuando quieras.",
-                    style = MaterialTheme.typography.bodySmall,
+        EncabezadoGrupo("Preferencias")
+        Grupo {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text("Avisos de espacios libres", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Te escribimos por WhatsApp cuando se libera un horario. Puedes apagarlo cuando quieras.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Switch(
+                    checked = vm.aceptaAvisos,
+                    onCheckedChange = vm::cambiarAvisos,
+                    enabled = !vm.cargando,
                 )
             }
-            Switch(
-                checked = vm.aceptaAvisos,
-                onCheckedChange = vm::cambiarAvisos,
-                enabled = !vm.cargando,
-            )
+
+            vm.mensaje?.let { Text(it, color = Paleta.Ballena, style = MaterialTheme.typography.bodySmall) }
+
+            HorizontalDivider(Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Paleta.Linea)
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text("Abrir con huella o rostro", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        if (hayHuella) "Nadie ve tus citas aunque tome tu teléfono."
+                        else "Tu teléfono no tiene huella o rostro registrados.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Switch(
+                    checked = app.sesion.pedirHuella,
+                    enabled = hayHuella,
+                    onCheckedChange = { activar ->
+                        errorHuella = null
+                        if (activar) {
+                            // Se confirma con la huella antes de activarla.
+                            pedirHuella(
+                                actividad,
+                                alExito = {
+                                    app.sesion.cambiarHuella(true)
+                                    app.desbloqueada = true
+                                },
+                                alFallar = { errorHuella = it },
+                            )
+                        } else {
+                            app.sesion.cambiarHuella(false)
+                        }
+                    },
+                )
+            }
+        }
+        errorHuella?.let { MensajeError(it) }
+
+        // Solo en la versión de pruebas: evidencia de los sensores para la presentación.
+        if (BuildConfig.DEBUG) {
+            Grupo {
+                TextButton(onClick = alSensores, modifier = Modifier.fillMaxWidth()) {
+                    Text("Sensores del teléfono (pruebas)")
+                }
+            }
         }
 
-        vm.mensaje?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-
-        HorizontalDivider()
-
-        OutlinedButton(onClick = vm::salir, modifier = Modifier.fillMaxWidth()) {
-            Text("Cerrar sesión")
+        Grupo {
+            TextButton(
+                onClick = vm::salir,
+                colors = ButtonDefaults.textButtonColors(contentColor = Paleta.Oxido),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Cerrar sesión")
+            }
         }
+    }
+}
+
+// --- Llegada -------------------------------------------------------------------
+
+@Composable
+fun PantallaLlegada(vm: LlegadaViewModel, alCerrar: () -> Unit) {
+    val cerrar = {
+        vm.reiniciar()
+        alCerrar()
+    }
+    val resultado = vm.resultado
+    val error = vm.error
+
+    when {
+        vm.cargando -> Cargando()
+        resultado != null || error != null -> Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            if (resultado != null) {
+                Text(resultado, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            } else {
+                MensajeError(error.orEmpty())
+            }
+            Button(onClick = cerrar, modifier = Modifier.fillMaxWidth()) { Text("Listo") }
+            if (resultado == null) {
+                OutlinedButton(onClick = vm::reiniciar, modifier = Modifier.fillMaxWidth()) {
+                    Text("Escanear de nuevo")
+                }
+            }
+        }
+        else -> PantallaEscaner(alLeer = vm::registrar, alCerrar = cerrar)
     }
 }
 
@@ -528,21 +759,61 @@ fun PantallaPerfil(vm: PerfilViewModel) {
 
 @Composable
 private fun Subtitulo(texto: String) {
-    Text(
-        texto,
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(top = 12.dp),
-    )
+    EncabezadoGrupo(texto, Modifier.padding(top = 12.dp))
+}
+
+/** Encabezado pequeño en mayúsculas sobre un grupo, como en Ajustes de iOS. */
+@Composable
+internal fun EncabezadoGrupo(texto: String, modifier: Modifier = Modifier) {
+    Text(texto.uppercase(), style = EstiloGrupo, modifier = modifier.padding(start = 4.dp, top = 4.dp))
+}
+
+/** Grupo blanco con esquinas redondeadas (lista agrupada de iOS). */
+@Composable
+internal fun Grupo(modifier: Modifier = Modifier, contenido: @Composable () -> Unit) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Paleta.Superficie),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) { contenido() }
+    }
+}
+
+/** Cuadro negro con las iniciales: el logotipo provisional. */
+@Composable
+private fun Logo() {
+    Box(
+        modifier = Modifier.size(64.dp).background(Paleta.Negro, RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("BA", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+    }
 }
 
 @Composable
-private fun Cargando() {
+internal fun coloresCampo() = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = Paleta.Superficie,
+    unfocusedContainerColor = Paleta.Superficie,
+    unfocusedBorderColor = Paleta.Linea,
+    focusedBorderColor = Paleta.Ballena,
+)
+
+@Composable
+internal fun Cargando() {
     Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(Modifier.size(32.dp))
+        CircularProgressIndicator(Modifier.size(28.dp), color = Paleta.Ballena, strokeWidth = 2.5.dp)
     }
 }
 
 @Composable
 fun MensajeError(texto: String) {
-    Text(texto, color = MaterialTheme.colorScheme.error)
+    Text(
+        texto,
+        color = Paleta.Oxido,
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Paleta.OxidoClaro, RoundedCornerShape(12.dp))
+            .padding(12.dp),
+    )
 }
