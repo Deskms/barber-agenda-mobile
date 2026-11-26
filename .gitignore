@@ -13,3 +13,9 @@
 *.jks
 *.keystore
 /respaldos
+
+# Salida de scripts/compilar-debug.bat
+build-log.txt
+
+# Salida de scripts/ver-sha1.bat
+huella-sha1.txt

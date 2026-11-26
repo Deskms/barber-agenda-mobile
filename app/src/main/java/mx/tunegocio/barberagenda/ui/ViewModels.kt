@@ -15,6 +15,7 @@ import mx.tunegocio.barberagenda.data.Cita
 import mx.tunegocio.barberagenda.data.Horario
 import mx.tunegocio.barberagenda.data.Negocio
 import mx.tunegocio.barberagenda.data.Oferta
+import mx.tunegocio.barberagenda.data.ResultadoGoogle
 import mx.tunegocio.barberagenda.data.Seccion
 import mx.tunegocio.barberagenda.data.Sellos
 import mx.tunegocio.barberagenda.data.Servicio
@@ -65,7 +66,43 @@ class AccesoViewModel(
     var aviso by mutableStateOf<String?>(null)
         private set
 
+    /** Cuenta de Google elegida que falta ligar a un número (solo la primera vez). */
+    var enlaceGoogle by mutableStateOf<String?>(null)
+        private set
+    var correoGoogle by mutableStateOf<String?>(null)
+        private set
+
     private val soloDigitos: String get() = telefono.filter { it.isDigit() }
+
+    private val dispositivo: String get() = "${Build.MANUFACTURER} ${Build.MODEL}"
+
+    /** El token de Google ya se obtuvo en la pantalla (necesita la Activity). */
+    fun entrarConGoogle(idToken: String) {
+        if (cargando) return
+        lanzar {
+            when (val r = api.entrarConGoogle(idToken, dispositivo)) {
+                is ResultadoGoogle.Entro -> {
+                    sesion.guardar(r.sesion)
+                    enlaceGoogle = null
+                }
+                is ResultadoGoogle.FaltaTelefono -> {
+                    enlaceGoogle = r.enlace
+                    correoGoogle = r.email
+                    esperandoCodigo = false
+                    aviso = null
+                }
+            }
+        }
+    }
+
+    fun errorDeGoogle(mensaje: String) {
+        error = mensaje
+    }
+
+    fun olvidarGoogle() {
+        enlaceGoogle = null
+        correoGoogle = null
+    }
 
     fun pedirCodigo() {
         if (cargando) return
@@ -93,8 +130,9 @@ class AccesoViewModel(
             return
         }
         lanzar {
-            val dispositivo = "${Build.MANUFACTURER} ${Build.MODEL}"
-            sesion.guardar(api.canjearCodigo(soloDigitos, limpio, dispositivo))
+            sesion.guardar(api.canjearCodigo(soloDigitos, limpio, dispositivo, enlaceGoogle))
+            enlaceGoogle = null
+            correoGoogle = null
             codigo = ""
             esperandoCodigo = false
             aviso = null

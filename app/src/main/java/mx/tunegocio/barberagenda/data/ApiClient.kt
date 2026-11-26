@@ -42,16 +42,33 @@ class ApiClient(
         )
     }
 
-    suspend fun canjearCodigo(telefono: String, codigo: String, dispositivo: String): SesionIniciada {
+    /** enlaceGoogle: viene de entrarConGoogle; al confirmar el número se liga la cuenta. */
+    suspend fun canjearCodigo(telefono: String, codigo: String, dispositivo: String, enlaceGoogle: String? = null): SesionIniciada {
         val cuerpo = JSONObject()
             .put("telefono", telefono)
             .put("codigo", codigo)
             .put("dispositivo", dispositivo.take(60))
+        if (enlaceGoogle != null) cuerpo.put("enlace_google", enlaceGoogle)
         val j = llamar("POST", "auth/token", cuerpo)
         return SesionIniciada(
             token = j.getString("token"),
             cliente = clienteDe(j.getJSONObject("cliente")),
         )
+    }
+
+    /** Manda el ID token de Google; el servidor lo verifica con Google. */
+    suspend fun entrarConGoogle(idToken: String, dispositivo: String): ResultadoGoogle {
+        val cuerpo = JSONObject().put("id_token", idToken).put("dispositivo", dispositivo.take(60))
+        val j = llamar("POST", "auth/google", cuerpo)
+        return if (j.optBoolean("requiere_telefono", false)) {
+            ResultadoGoogle.FaltaTelefono(
+                enlace = j.getString("enlace_google"),
+                email = j.texto("email"),
+                nombre = j.texto("nombre"),
+            )
+        } else {
+            ResultadoGoogle.Entro(SesionIniciada(token = j.getString("token"), cliente = clienteDe(j.getJSONObject("cliente"))))
+        }
     }
 
     suspend fun salir() {

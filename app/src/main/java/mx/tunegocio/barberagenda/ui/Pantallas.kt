@@ -3,6 +3,7 @@
 package mx.tunegocio.barberagenda.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -66,12 +68,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -81,18 +87,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.fragment.app.FragmentActivity
 import mx.tunegocio.barberagenda.BarberApp
+import mx.tunegocio.barberagenda.R
+import kotlinx.coroutines.launch
 import mx.tunegocio.barberagenda.BuildConfig
 import mx.tunegocio.barberagenda.data.Cita
 import mx.tunegocio.barberagenda.data.Servicio
-
-// Estilo minimalista tipo iOS (ver Tema.kt): fondo gris, grupos blancos,
-// títulos grandes y un solo color de acción (azul ballena).
 
 // --- Acceso ------------------------------------------------------------------
 
 @Composable
 fun PantallaAcceso(app: BarberApp) {
     val vm: AccesoViewModel = viewModel { AccesoViewModel(app.api, app.sesion) }
+    val contexto = LocalContext.current
+    val alcance = rememberCoroutineScope()
 
     Scaffold(containerColor = MaterialTheme.colorScheme.background) { relleno ->
         Column(
@@ -101,32 +108,77 @@ fun PantallaAcceso(app: BarberApp) {
                 .imePadding()
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Logo()
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Barber Agenda", style = MaterialTheme.typography.headlineMedium)
-                Text("Entra con tu WhatsApp", style = MaterialTheme.typography.bodyLarge, color = Paleta.Gris2)
+                Text("Entra con tu WhatsApp", style = MaterialTheme.typography.bodyLarge, color = Paleta.TextoSecundario)
+            }
+
+            // Con Google: la primera vez se confirma el número; después entra directo.
+            if (googleDisponible && vm.enlaceGoogle == null && !vm.esperandoCodigo) {
+                OutlinedButton(
+                    border = BorderStroke(1.dp, Paleta.LineaFuerte),
+                    onClick = {
+                        alcance.launch {
+                            when (val r = pedirCuentaGoogle(contexto)) {
+                                is CuentaGoogle.Token -> vm.entrarConGoogle(r.idToken)
+                                is CuentaGoogle.Fallo -> vm.errorDeGoogle(r.mensaje)
+                                CuentaGoogle.Cancelado -> Unit
+                            }
+                        }
+                    },
+                    enabled = !vm.cargando,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                ) {
+                    Text("G", fontWeight = FontWeight.Bold, color = Paleta.AceroClaro)
+                    Spacer(Modifier.width(10.dp))
+                    Text("Continuar con Google", color = MaterialTheme.colorScheme.onSurface)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    HorizontalDivider(Modifier.weight(1f), color = Paleta.Linea)
+                    Text("  o con tu número  ", style = MaterialTheme.typography.bodySmall, color = Paleta.TextoSecundario)
+                    HorizontalDivider(Modifier.weight(1f), color = Paleta.Linea)
+                }
+            }
+
+            vm.enlaceGoogle?.let {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Paleta.AceroFondo),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Cuenta de Google: ${vm.correoGoogle ?: "elegida"}", fontWeight = FontWeight.SemiBold, color = Paleta.AceroClaro)
+                        Text(
+                            "Confirma tu número de WhatsApp una sola vez. Así tus citas y tu tarjeta quedan ligadas a tu cuenta y la próxima vez entras solo con Google.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Paleta.Plata,
+                        )
+                        TextButton(onClick = vm::olvidarGoogle, contentPadding = PaddingValues(0.dp)) { Text("Usar otro método") }
+                    }
+                }
             }
 
             if (!vm.esperandoCodigo) {
-                Text("Te mandamos un código de 6 dígitos. No necesitas contraseña.", style = MaterialTheme.typography.bodyMedium, color = Paleta.Gris2)
+                Text("Te mandamos un código de 6 dígitos. No necesitas contraseña.", style = MaterialTheme.typography.bodyMedium, color = Paleta.TextoSecundario)
                 OutlinedTextField(
                     value = vm.telefono,
                     onValueChange = { vm.telefono = it },
                     label = { Text("Número a 10 dígitos") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = coloresCampo(),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Button(
                     onClick = vm::pedirCodigo,
                     enabled = !vm.cargando,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 ) { Text(if (vm.cargando) "Enviando…" else "Enviarme el código") }
             } else {
                 vm.aviso?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
@@ -136,15 +188,15 @@ fun PantallaAcceso(app: BarberApp) {
                     label = { Text("Código de 6 dígitos") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = coloresCampo(),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Button(
                     onClick = vm::entrar,
                     enabled = !vm.cargando,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 ) { Text(if (vm.cargando) "Entrando…" else "Entrar") }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = vm::cambiarNumero) { Text("Cambiar número") }
@@ -159,7 +211,7 @@ fun PantallaAcceso(app: BarberApp) {
                 Text(
                     "Pruebas: usa 5550000001, 5550000002 o 5550000003.\nServidor: ${BuildConfig.API_BASE}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Paleta.Gris,
+                    color = Paleta.TextoSecundario,
                 )
             }
         }
@@ -199,18 +251,23 @@ fun PantallaPrincipal(app: BarberApp) {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        // Título grande a la izquierda, como en las apps de iOS.
+        // Marca y título de la pestaña activa.
         topBar = {
             TopAppBar(
-                title = { Text(PESTANAS[pestana].titulo, style = MaterialTheme.typography.headlineMedium) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Image(painterResource(R.drawable.monograma), null, Modifier.size(27.dp, 36.dp))
+                        Text(PESTANAS[pestana].titulo, style = MaterialTheme.typography.headlineMedium)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
-        // Barra de pestañas blanca con línea fina arriba y sin "pastilla".
+        // La cápsula de acero distingue la pestaña seleccionada.
         bottomBar = {
             Column {
                 HorizontalDivider(thickness = 0.5.dp, color = Paleta.LineaFuerte)
-                NavigationBar(containerColor = Paleta.Superficie, tonalElevation = 0.dp) {
+                NavigationBar(containerColor = Paleta.Barra, tonalElevation = 0.dp) {
                     PESTANAS.forEachIndexed { i, p ->
                         NavigationBarItem(
                             selected = pestana == i,
@@ -218,11 +275,11 @@ fun PantallaPrincipal(app: BarberApp) {
                             icon = { Icon(p.icono, contentDescription = p.titulo) },
                             label = { Text(p.titulo, style = MaterialTheme.typography.labelSmall) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Paleta.Ballena,
-                                selectedTextColor = Paleta.Ballena,
-                                indicatorColor = Color.Transparent,
-                                unselectedIconColor = Paleta.Gris,
-                                unselectedTextColor = Paleta.Gris,
+                                selectedIconColor = Paleta.AceroClaro,
+                                selectedTextColor = Paleta.Acero,
+                                indicatorColor = Paleta.AceroFondo,
+                                unselectedIconColor = Paleta.TextoSecundario,
+                                unselectedTextColor = Paleta.TextoSecundario,
                             ),
                         )
                     }
@@ -303,7 +360,7 @@ fun PantallaAgendar(vm: AgendarViewModel, alAgendar: (Cita) -> Unit) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         vm.error?.let { item { MensajeError(it) } }
@@ -325,7 +382,7 @@ fun PantallaAgendar(vm: AgendarViewModel, alAgendar: (Cita) -> Unit) {
                 Text(
                     seccion.nombre,
                     style = MaterialTheme.typography.titleSmall,
-                    color = Paleta.Cafe,
+                    color = Paleta.AceroClaro,
                     modifier = Modifier.padding(start = 4.dp, top = 8.dp),
                 )
             }
@@ -380,8 +437,8 @@ fun PantallaAgendar(vm: AgendarViewModel, alAgendar: (Cita) -> Unit) {
                     Button(
                         onClick = { vm.agendar(alAgendar) },
                         enabled = !vm.cargando,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(52.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 52.dp),
                     ) {
                         Text(
                             if (vm.cargando) "Agendando…"
@@ -397,17 +454,29 @@ fun PantallaAgendar(vm: AgendarViewModel, alAgendar: (Cita) -> Unit) {
 @Composable
 private fun FilaServicio(s: Servicio, elegido: Boolean, alElegir: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = alElegir),
-        colors = CardDefaults.cardColors(containerColor = Paleta.Superficie),
-        border = if (elegido) BorderStroke(1.5.dp, Paleta.Ballena) else null,
+        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).clickable(onClick = alElegir),
+        colors = CardDefaults.cardColors(
+            containerColor = if (elegido) Paleta.AceroFondo else Paleta.Superficie,
+            contentColor = Paleta.Plata,
+        ),
+        border = BorderStroke(1.dp, if (elegido) Paleta.Acero else Paleta.Linea),
     ) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(s.nombre, style = MaterialTheme.typography.bodyLarge)
-                Text("${s.duracionMinutos} min · ${precioTexto(s.precio)}", style = MaterialTheme.typography.bodySmall)
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(s.nombre, style = MaterialTheme.typography.titleMedium)
+                Text("${s.duracionMinutos} min", style = MaterialTheme.typography.bodySmall)
             }
+            Text(
+                precioTexto(s.precio),
+                color = Paleta.AceroClaro,
+                style = MaterialTheme.typography.labelLarge,
+            )
             if (elegido) {
-                Icon(Icons.Filled.Check, contentDescription = "Elegido", tint = Paleta.Ballena)
+                Icon(Icons.Filled.Check, contentDescription = "Elegido", tint = Paleta.Acero)
             }
         }
     }
@@ -422,14 +491,14 @@ fun PantallaCitas(vm: CitasViewModel, alLlegar: () -> Unit, alComoLlegar: () -> 
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
             Button(
                 onClick = alLlegar,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
             ) {
                 Text("Ya llegué: escanear QR del mostrador")
             }
@@ -437,10 +506,10 @@ fun PantallaCitas(vm: CitasViewModel, alLlegar: () -> Unit, alComoLlegar: () -> 
         item {
             OutlinedButton(
                 onClick = alComoLlegar,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.outlinedButtonColors(containerColor = Paleta.Superficie),
                 border = BorderStroke(1.dp, Paleta.Linea),
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
             ) {
                 Text("Cómo llegar (brújula)")
             }
@@ -454,7 +523,7 @@ fun PantallaCitas(vm: CitasViewModel, alLlegar: () -> Unit, alComoLlegar: () -> 
         vm.error?.let { item { MensajeError(it) } }
         if (vm.cargando && vm.citas.isEmpty()) item { Cargando() }
         if (!vm.cargando && vm.citas.isEmpty() && vm.error == null) {
-            item { Text("Todavía no tienes citas. Agenda una en la pestaña Agendar.", color = Paleta.Gris2) }
+            item { Text("Todavía no tienes citas. Agenda una en la pestaña Agendar.", color = Paleta.TextoSecundario) }
         }
         val ahora = java.time.OffsetDateTime.now()
         val (proximas, historial) = vm.citas.partition {
@@ -497,23 +566,31 @@ fun PantallaCitas(vm: CitasViewModel, alLlegar: () -> Unit, alComoLlegar: () -> 
 @Composable
 private fun TarjetaCita(c: Cita, cancelando: Boolean, alMover: () -> Unit, alCancelar: () -> Unit) {
     val colorEstado = when (c.estado) {
-        "confirmada" -> Paleta.Ballena
+        "confirmada" -> Paleta.Acero
         "completada" -> Paleta.Verde
-        "no_asistio" -> Paleta.Oxido
-        else -> Paleta.Gris
+        "no_asistio" -> Paleta.Error
+        else -> Paleta.TextoSecundario
     }
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Paleta.Superficie)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Paleta.Superficie, contentColor = Paleta.Plata),
+        border = BorderStroke(1.dp, Paleta.Linea),
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(c.servicio?.nombre ?: "Servicio", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                Box(Modifier.size(8.dp).background(colorEstado, CircleShape))
-                Spacer(Modifier.width(6.dp))
-                Text(estadoTexto(c.estado), color = colorEstado, style = MaterialTheme.typography.labelLarge)
+                Text(
+                    estadoTexto(c.estado),
+                    color = colorEstado,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.background(colorEstado.copy(alpha = 0.12f), CircleShape)
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                )
             }
             Text(fechaLarga(c.inicio), style = MaterialTheme.typography.bodyMedium)
             c.seccion?.let { Text(it.nombre, style = MaterialTheme.typography.bodySmall) }
             c.llegadaEn?.let {
-                Text("Llegaste a las ${horaCorta(it)}", color = Paleta.Cafe, style = MaterialTheme.typography.bodyMedium)
+                Text("Llegaste a las ${horaCorta(it)}", color = Paleta.AceroClaro, style = MaterialTheme.typography.bodyMedium)
             }
             if (c.puedeCancelarse) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp), thickness = 0.5.dp, color = Paleta.Linea)
@@ -523,7 +600,7 @@ private fun TarjetaCita(c: Cita, cancelando: Boolean, alMover: () -> Unit, alCan
                     TextButton(
                         onClick = alCancelar,
                         enabled = !cancelando,
-                        colors = ButtonDefaults.textButtonColors(contentColor = Paleta.Oxido),
+                        colors = ButtonDefaults.textButtonColors(contentColor = Paleta.Error),
                     ) {
                         Text(if (cancelando) "Cancelando…" else "Cancelar")
                     }
@@ -554,10 +631,10 @@ fun PantallaSellos(vm: SellosViewModel) {
             return@Column
         }
 
-        // Tarjeta de cartón café: un sello lleno por cada cita completada.
-        Grupo {
+        // Tarjeta de fidelidad con sellos en plata y acero.
+        TarjetaDeSellos {
             Text("${s.sellos} de ${s.meta}", style = MaterialTheme.typography.headlineSmall)
-            Text("Te faltan ${s.faltan} para: ${s.premio}", style = MaterialTheme.typography.bodyMedium, color = Paleta.Gris2)
+            Text("Te faltan ${s.faltan} para: ${s.premio}", style = MaterialTheme.typography.bodyMedium, color = Paleta.TextoSecundario)
             Spacer(Modifier.height(8.dp))
             (1..s.meta).chunked(5).forEach { fila ->
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 10.dp)) {
@@ -567,13 +644,13 @@ fun PantallaSellos(vm: SellosViewModel) {
                             modifier = Modifier
                                 .weight(1f)
                                 .aspectRatio(1f)
-                                .border(1.5.dp, if (lleno) Paleta.Cafe else Paleta.LineaFuerte, CircleShape)
-                                .background(if (lleno) Paleta.Cafe else Paleta.Superficie, CircleShape),
+                                .border(1.5.dp, if (lleno) Paleta.AceroClaro else Paleta.LineaFuerte, CircleShape)
+                                .background(if (lleno) Paleta.AceroClaro else Paleta.Superficie, CircleShape),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 if (lleno) "✓" else n.toString(),
-                                color = if (lleno) Color.White else Paleta.Gris,
+                                color = if (lleno) Paleta.SobreAcero else Paleta.TextoSecundario,
                                 fontWeight = if (lleno) FontWeight.Bold else FontWeight.Normal,
                             )
                         }
@@ -591,10 +668,10 @@ fun PantallaSellos(vm: SellosViewModel) {
         )
 
         if (s.premiosDisponibles > 0) {
-            Card(colors = CardDefaults.cardColors(containerColor = Paleta.CafeClaro)) {
+            Card(colors = CardDefaults.cardColors(containerColor = Paleta.AceroFondo)) {
                 Text(
                     "Tienes ${s.premiosDisponibles} premio(s) listo(s): ${s.premio}. Muéstralo en tu próxima visita.",
-                    color = Paleta.Cafe,
+                    color = Paleta.AceroClaro,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(16.dp),
                 )
@@ -640,7 +717,7 @@ fun PantallaPerfil(vm: PerfilViewModel, app: BarberApp, alSensores: () -> Unit) 
                 onValueChange = { vm.nombre = it },
                 label = { Text("Nombre") },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = coloresCampo(),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -664,7 +741,7 @@ fun PantallaPerfil(vm: PerfilViewModel, app: BarberApp, alSensores: () -> Unit) 
                 )
             }
 
-            vm.mensaje?.let { Text(it, color = Paleta.Ballena, style = MaterialTheme.typography.bodySmall) }
+            vm.mensaje?.let { Text(it, color = Paleta.Acero, style = MaterialTheme.typography.bodySmall) }
 
             HorizontalDivider(Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Paleta.Linea)
 
@@ -713,7 +790,7 @@ fun PantallaPerfil(vm: PerfilViewModel, app: BarberApp, alSensores: () -> Unit) 
         Grupo {
             TextButton(
                 onClick = vm::salir,
-                colors = ButtonDefaults.textButtonColors(contentColor = Paleta.Oxido),
+                colors = ButtonDefaults.textButtonColors(contentColor = Paleta.Error),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Cerrar sesión")
@@ -762,31 +839,75 @@ private fun Subtitulo(texto: String) {
     EncabezadoGrupo(texto, Modifier.padding(top = 12.dp))
 }
 
-/** Encabezado pequeño en mayúsculas sobre un grupo, como en Ajustes de iOS. */
+/** Encabezado de sección con una línea de acero. */
 @Composable
 internal fun EncabezadoGrupo(texto: String, modifier: Modifier = Modifier) {
-    Text(texto.uppercase(), style = EstiloGrupo, modifier = modifier.padding(start = 4.dp, top = 4.dp))
+    Row(
+        modifier = modifier.padding(vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Spacer(Modifier.size(22.dp, 1.dp).background(Paleta.Acero))
+        Text(texto.uppercase(), style = EstiloGrupo)
+    }
 }
 
-/** Grupo blanco con esquinas redondeadas (lista agrupada de iOS). */
+/** Superficie compartida por el resumen de la cita y los ajustes. */
 @Composable
 internal fun Grupo(modifier: Modifier = Modifier, contenido: @Composable () -> Unit) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Paleta.Superficie),
+        colors = CardDefaults.cardColors(containerColor = Paleta.Superficie, contentColor = Paleta.Plata),
+        border = BorderStroke(1.dp, Paleta.Linea),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) { contenido() }
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) { contenido() }
     }
 }
 
-/** Cuadro negro con las iniciales: el logotipo provisional. */
+@Composable
+private fun TarjetaDeSellos(contenido: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(Brush.linearGradient(listOf(Paleta.AceroFondo, Paleta.Barra)))
+            .border(1.dp, Paleta.LineaFuerte, MaterialTheme.shapes.large)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Image(
+            painterResource(R.drawable.firma), contentDescription = "Joss Barber",
+            modifier = Modifier.size(120.dp, 28.dp),
+        )
+        HorizontalDivider(Modifier.padding(vertical = 8.dp), color = Paleta.LineaFuerte.copy(alpha = 0.55f))
+        contenido()
+    }
+}
+
 @Composable
 private fun Logo() {
     Box(
-        modifier = Modifier.size(64.dp).background(Paleta.Negro, RoundedCornerShape(16.dp)),
-        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxWidth().height(150.dp)
+            .clip(MaterialTheme.shapes.large)
+            .background(Paleta.Barra)
+            .border(1.dp, Paleta.Linea, MaterialTheme.shapes.large),
     ) {
-        Text("BA", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+        Image(
+            painterResource(R.drawable.barberia), contentDescription = null,
+            modifier = Modifier.matchParentSize(), contentScale = ContentScale.Crop,
+            alignment = Alignment.CenterEnd,
+        )
+        Spacer(
+            Modifier.matchParentSize().background(
+                Brush.horizontalGradient(listOf(Paleta.Fondo, Paleta.Fondo.copy(alpha = 0.86f), Color.Transparent)),
+            ),
+        )
+        Column(
+            Modifier.align(Alignment.CenterStart).padding(start = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Image(painterResource(R.drawable.monograma), null, Modifier.size(42.dp, 54.dp))
+            Image(painterResource(R.drawable.firma), "Joss Barber", Modifier.size(140.dp, 34.dp))
+        }
     }
 }
 
@@ -794,14 +915,14 @@ private fun Logo() {
 internal fun coloresCampo() = OutlinedTextFieldDefaults.colors(
     focusedContainerColor = Paleta.Superficie,
     unfocusedContainerColor = Paleta.Superficie,
-    unfocusedBorderColor = Paleta.Linea,
-    focusedBorderColor = Paleta.Ballena,
+    unfocusedBorderColor = Paleta.LineaFuerte,
+    focusedBorderColor = Paleta.Acero,
 )
 
 @Composable
 internal fun Cargando() {
     Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(Modifier.size(28.dp), color = Paleta.Ballena, strokeWidth = 2.5.dp)
+        CircularProgressIndicator(Modifier.size(28.dp), color = Paleta.Acero, strokeWidth = 2.5.dp)
     }
 }
 
@@ -809,11 +930,11 @@ internal fun Cargando() {
 fun MensajeError(texto: String) {
     Text(
         texto,
-        color = Paleta.Oxido,
+        color = Paleta.Error,
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier
             .fillMaxWidth()
-            .background(Paleta.OxidoClaro, RoundedCornerShape(12.dp))
+            .background(Paleta.ErrorFondo, RoundedCornerShape(10.dp))
             .padding(12.dp),
     )
 }

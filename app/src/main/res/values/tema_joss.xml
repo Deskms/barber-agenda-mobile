@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="joss_grafito">#141416</color>
+    <style name="TemaJoss" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/joss_grafito</item>
+        <item name="android:colorAccent">#8FA8BE</item>
+        <item name="android:statusBarColor">@color/joss_grafito</item>
+        <item name="android:navigationBarColor">#1C2024</item>
+    </style>
+</resources>

@@ -85,6 +85,12 @@ data class SesionIniciada(
     val cliente: Cliente,
 )
 
+/** Respuesta de auth/google: o ya entró, o falta confirmar su número una vez. */
+sealed interface ResultadoGoogle {
+    data class Entro(val sesion: SesionIniciada) : ResultadoGoogle
+    data class FaltaTelefono(val enlace: String, val email: String?, val nombre: String?) : ResultadoGoogle
+}
+
 // --- Lectura de JSON ------------------------------------------------------
 
 /** optString devuelve "null" cuando el valor es JSON null; esto devuelve null. */

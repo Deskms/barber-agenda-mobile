@@ -8,6 +8,10 @@ plugins {
 val apiBase: String = (project.findProperty("BARBER_API_URL") as String?)
     ?: "https://citas.tunegociomx.app/api/movil/"
 
+// "ID de cliente web" de Google Cloud para "Continuar con Google". Va en
+// gradle.properties (GOOGLE_WEB_CLIENT_ID). Vacío = el botón no aparece.
+val googleWebClientId: String = (project.findProperty("GOOGLE_WEB_CLIENT_ID") as String?).orEmpty()
+
 android {
     namespace = "mx.tunegocio.barberagenda"
     compileSdk = 35
@@ -19,6 +23,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("String", "API_BASE", "\"$apiBase\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     buildTypes {
@@ -66,5 +71,10 @@ dependencies {
     // Sensor 2: huella o rostro para abrir la app.
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.fragment.ktx)
+
+    // Iniciar sesión con Google (Credential Manager).
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
     debugImplementation(libs.androidx.ui.tooling)
 }

@@ -15,7 +15,7 @@ Proyecto Cuatrimestral Integral · IDGS · UTJ · 2026C · 9.° B.
 
 | Pantalla | Endpoint |
 |---|---|
-| Entrar con código de WhatsApp | `POST auth/codigo`, `POST auth/token` |
+| Entrar con código de WhatsApp o con Google | `POST auth/codigo`, `POST auth/token`, `POST auth/google` |
 | Agendar: servicio → día → hora | `GET catalogo`, `GET disponibilidad`, `POST citas` |
 | Mis citas y cancelar | `GET citas`, `POST citas/{id}/cancelar` |
 | Tarjeta de sellos | `GET sellos` |
@@ -25,7 +25,7 @@ El token se guarda cifrado (EncryptedSharedPreferences). Si el servidor
 responde 401, la app regresa sola a la pantalla de acceso. Si al agendar el
 horario ya se ocupó (409), muestra el aviso y vuelve a pedir los horarios.
 
-El diseño es provisional: el equipo define el visual final.
+Diseño visual (tema oscuro de Joss Barber): José Francisco Quezada Palomo.
 
 ## Abrir y correr
 
@@ -80,3 +80,12 @@ app/src/main/java/mx/tunegocio/barberagenda/
 
 El andamiaje inicial con Expo/React Native quedó en `legacy-expo/`, sin uso.
 Se reemplazó por el proyecto nativo de Android Studio (SCRUM-54).
+
+## Equipo
+
+| Integrante | Participación |
+|---|---|
+| Adrián Dominic Hernández Esqueda | Líder del proyecto. Desarrollo de la app y de la API que consume, pruebas en teléfono y demostración. |
+| José Francisco Quezada Palomo | Co-desarrollo junto con Dominic y diseño visual de la app. |
+| José Manuel Castellanos Castro | Versión inicial (V1) del QR y del backend móvil. Resultó insuficiente y se tomó como guía para la versión final. |
+| Rodrigo Salas Martínez | No participó en el desarrollo. |
